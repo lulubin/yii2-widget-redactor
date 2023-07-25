@@ -1,0 +1,59 @@
+<?php
+namespace lulubin\redactor\models;
+
+use Yii;
+use yii\web\UploadedFile;
+use yii\helpers\Inflector;
+
+class FileUploadModel extends \yii\base\Model
+{
+    public $file;
+    private $_fileName;
+
+    public function rules()
+    {
+        return [
+            ['file', 'file', 'extensions' => Yii::$app->controller->module->fileAllowExtensions]
+        ];
+    }
+
+    public function upload()
+    {
+        if ($this->validate()) {
+            $res = $this->file->saveAs(Yii::$app->controller->module->getFilePath($this->getFileName()), true);
+            if($res['code'] == 1){
+                $this->_fileName = $res['path'];
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public function getResponse()
+    {
+        return [
+            'filelink' => $this->_fileName ? '/images/'.$this->_fileName : Yii::$app->controller->module->getUrl($this->getFileName()),
+            'filename' => $this->getFileName()
+        ];
+    }
+
+    public function getFileName()
+    {
+        if (!$this->_fileName) {
+            $fileName = substr(uniqid(md5(rand()), true), 0, 10);
+            $fileName .= '-' . Inflector::slug($this->file->baseName);
+            $fileName .= '.' . $this->file->extension;
+            $this->_fileName = $fileName;
+        }
+        return $this->_fileName;
+    }
+
+    public function beforeValidate()
+    {
+        if (parent::beforeValidate()) {
+            $this->file = UploadedFile::getInstanceByName('file');
+            return true;
+        }
+        return false;
+    }
+}
